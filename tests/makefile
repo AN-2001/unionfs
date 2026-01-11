@@ -5,13 +5,16 @@ PROJECT_DIR ?= $(abspath ..)/
 
 DEPS_DIR = $(PROJECT_DIR)deps
 INCLUDE_DIR := $(PROJECT_DIR)include
+SRC_DIR := $(PROJECT_DIR)src
 BUILD_DIR := $(PROJECT_DIR)build
 TEST_DIR := $(PROJECT_DIR)tests
 
 FUSE_DIR = $(DEPS_DIR)/fuse
 CMOCKA_DIR = $(DEPS_DIR)/cmocka
 
-CFLAGS := -I$(CMOCKA_DIR)/include -I$(FUSE_DIR)/include -I$(INCLUDE_DIR) \
+CFLAGS := -I$(CMOCKA_DIR)/include -I$(FUSE_DIR)/include \
+		  -I$(INCLUDE_DIR) \
+		  -I$(SRC_DIR) \
 		  -Wall -Werror -g -fdiagnostics-color=always
 
 LDFLAGS :=  -L$(CMOCKA_DIR)/lib -L$(FUSE_DIR)/lib -L$(BUILD_DIR) \
@@ -21,15 +24,20 @@ LDFLAGS :=  -L$(CMOCKA_DIR)/lib -L$(FUSE_DIR)/lib -L$(BUILD_DIR) \
 LDLIBS := -lcmocka -lfuse3 -lufs -lpthread -ldl
 
 # project names.
-TESTS := ufs_image_test
+TESTS := ufs_image_test ufs_header_test
 
 # Place compilation targets here.
+OBJECTS := $(BUILD_DIR)/tests/utils.o
 
 GLOBAL_HEADERS := $(INCLUDE_DIR)/ufs_defs.h
 
 all: $(TESTS) $(BUILD_DIR)/ufs_tests.sh
 
-ufs_image_test: $(BUILD_DIR)/tests/ufs_image_test.o
+ufs_header_test: $(BUILD_DIR)/tests/ufs_header_test.o $(OBJECTS)
+	@mkdir -p $(BUILD_DIR)/tests
+	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $(BUILD_DIR)/tests/$@
+
+ufs_image_test: $(BUILD_DIR)/tests/ufs_image_test.o $(OBJECTS) 
 	@mkdir -p $(BUILD_DIR)/tests
 	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $(BUILD_DIR)/tests/$@
 

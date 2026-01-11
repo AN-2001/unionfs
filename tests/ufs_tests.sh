@@ -3,8 +3,6 @@
 failedTests=0
 failedFiles=()
 
-echo "Running all ufs tests:"
-
 pushd ./tests > /dev/null 2>&1
 
 if [ $? -ne 0 ]
@@ -19,13 +17,17 @@ do
     if [ -x $i ]
     then
         echo "Running test $i"
-        CLICOLOR=1 ./$i
-        failedTests=$(( $failedTests + $? ))
+        ./$i
 
-        if [ $? -ne 0 ]
+        res=$?
+
+        failedTests=$(( $failedTests + $res ))
+
+        if [ $res -ne 0 ]
         then
             failedFiles+=($i)
         fi
+
     fi
 done
 
@@ -34,10 +36,7 @@ echo "There are $failedTests failed tests in total"
 if [ $failedTests -gt 0 ]
 then
     echo "Failed tests are in:"
-    for file in "${failedFiles[@]}"
-    do
-        echo "-- $file"
-    done
+    echo $failedFiles
 fi
 
 popd > /dev/null 2>&1

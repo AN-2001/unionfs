@@ -18,7 +18,7 @@
 #define UFS_INDEX_VERSION (1) 
 
 /* contains the word ufs followed by 0, sanity check for corruption.          */
-#define UFS_MAGIC_NUMBER (0x75667300)
+#define UFS_MAGIC_NUMBER (0x00736675)
 #define UFS_DIRECTORY (".ufs")
 #define UFS_IMAGE_FILE UFS_DIRECTORY ("ufs_index")
 
@@ -38,21 +38,19 @@
 #define UFS_IMAGE_TOO_SMALL (-12)
 #define UFS_IMAGE_COULD_NOT_SYNC (-13)
 
+enum ufsTyepesEnum {
+    UFS_TYPES_FILE = 0,
+    UFS_TYPES_AREA,
+    UFS_TYPES_NODE,
+    UFS_TYPES_STRING,
+    UFS_TYPES_COUNT,
+};
+
 typedef int64_t ufsIdType;
 
 /* Errors are defined as negative, so that functions that could return        */
 /* ufsIdType could also return errors.                                        */
 typedef int64_t ufsStatusType;
-
-struct ufsSizeRequestStruct {
-    uint64_t fileCount;
-    uint64_t areaCount;
-    /* We'll assume it's | files X areas |, still lets expose it for the      */
-    /* future.                                                                */
-    uint64_t bstNodeCount; 
-};
-
-extern struct ufsSizeRequestStruct ufsDefaultSizeRequest;
 
 extern ufsStatusType ufsErrno;
 

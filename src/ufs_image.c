@@ -19,12 +19,6 @@
 #include "ufs_image.h"
 #include <unistd.h>
 
-struct ufsSizeRequestStruct
-        ufsDefaultSizeRequest = (struct ufsSizeRequestStruct){
-                            .fileCount = 128,
-                            .areaCount = 128,
-                            .bstNodeCount = 128 };
-
 ufsStatusType ufsErrno = 0;
 
 ufsImagePtr ufsImageOpen( const char *filePath )

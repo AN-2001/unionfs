@@ -7,7 +7,7 @@
 *                                                                              *
 \******************************************************************************/
 
-/* Notes:                                                                    */
+/* Notes:                                                                     */
 /* Note that a ufsImage by itself does not hold any semantics.                */
 /* The intention is usf_image only manages low level management of memory     */
 /* images.                                                                    */
@@ -31,7 +31,8 @@ typedef void *ufsImagePtr;
 *    On error, will return NULL and set ufsErrno to one of the following:      *
 *    * UFS_DOES_NOT_EXIST: Ufs image does not exist( bad filepath... )         *
 *    * UFS_IMAGE_TOO_SMALL: The loaded image is too small.                     *
-*                                                                              *
+*                          the check for this is done by checking that it fits *
+*                          the size metadata.                                  *
 * Parameters                                                                   *
 *                                                                              *
 *  -filePath: The path of the image file.                                      *
@@ -46,12 +47,17 @@ ufsImagePtr ufsImageOpen( const char *filePath );
 /******************************************************************************\
 * ufsImageCreate                                                               *
 *                                                                              *
-*  Creates a file backed memory region that would fit size bytes.             .*
+*  Creates a file backed memory region that would fit size bytes.              *
+*  The file is truncated and will alraedy be zero initialized upon return.     *
 *                                                                              *
 *  Possible errors:                                                            *
 *    On error, will return NULL and set ufsErrno to one of the following:      *
 *    * UFS_CANT_CREATE_FILE: Ufs failed to create filePath.                    *
 *    * UFS_BAD_CALL: The size request is bad or the filepath is NULL.          *
+*                                                                              *
+*  Note: The function validates that size >= sizeof( uint64_t )                *
+*        As it needs that much space to place metadata.                        *
+*        The size is not padded automatically as I'd like to keep users aware. *
 *                                                                              *
 * Parameters                                                                   *
 *                                                                              *
