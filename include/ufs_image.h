@@ -76,6 +76,9 @@ ufsImagePtr ufsImageCreate( const char *filePath, uint64_t size );
 *                                                                              *
 *  Syncs the in-memory ufs image with the backing file.                        *
 *                                                                              *
+*  Possible Errors:                                                            *
+*   - UFS_BAD_CALL: image is NULL.                                             *
+*                                                                              *
 * Parameters                                                                   *
 *                                                                              *
 *  -img: the ufs image.                                                        *

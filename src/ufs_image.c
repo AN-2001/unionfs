@@ -19,7 +19,7 @@
 #include "ufs_image.h"
 #include <unistd.h>
 
-ufsStatusType ufsErrno = 0;
+ufsStatusType ufsErrno = UFS_NO_ERROR;
 
 ufsImagePtr ufsImageOpen( const char *filePath )
 {
@@ -123,6 +123,11 @@ ufsImagePtr ufsImageCreate( const char *filePath, uint64_t size )
 
 bool ufsImageSync( ufsImagePtr image )
 {
+    if (!image) {
+        ufsErrno = UFS_BAD_CALL;
+        return false;
+    }
+
     uint64_t size;
 
     size = *(uint64_t*)image;
@@ -133,6 +138,7 @@ bool ufsImageSync( ufsImagePtr image )
         return false;
     }
 
+    ufsErrno = UFS_NO_ERROR;
     return true;
 }
 
@@ -145,4 +151,5 @@ void ufsImageFree( ufsImagePtr image )
     size = *(uint64_t*)image;
 
     munmap( image, size );
+    ufsErrno = UFS_NO_ERROR;
 }

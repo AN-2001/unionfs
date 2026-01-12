@@ -129,7 +129,7 @@ static void test_ufs_image_create_default_size(void **state) {
     assert_true( *size == TEST_SIZE );
 
     /* Could be made faster but size is tiny, it doesn't matter.              */
-    byte = (char*)(img) + sizeof( size ); 
+    byte = (char*)(img) + sizeof( *size ); 
     for (i = 0; i < *size; i++)
         assert_true( byte[i] == '\0' );
 
@@ -155,6 +155,10 @@ static void test_ufs_image_create_cant_create_file(void **state) {
     assert_int_equal( ufsErrno, UFS_CANT_CREATE_FILE );
 }
 
+static void test_ufs_image_sync_bad_arg(void **state) {
+    assert_false( ufsImageSync( NULL ) );
+    assert_int_equal( ufsErrno, UFS_BAD_CALL );
+}
 
 static void test_ufs_image_sync(void **state) {
     char payload[] = "hello world";
@@ -183,6 +187,13 @@ static void test_ufs_image_sync(void **state) {
     assert_string_equal( buff + 9, payload );
 }
 
+static void test_ufs_image_free_bad_arg(void **state) {
+    ufsImageFree( NULL );
+
+    /* This is not defined as an error.                                       */
+    assert_int_equal( ufsErrno, UFS_NO_ERROR );
+}
+
 static const struct CMUnitTest image_tests[] = {
     cmocka_unit_test(test_ufs_image_open_bad_args),
     cmocka_unit_test(test_ufs_image_open_does_not_exist),
@@ -191,7 +202,9 @@ static const struct CMUnitTest image_tests[] = {
     cmocka_unit_test_setup_teardown(test_ufs_image_create_bad_args, getFileNameSetup, cleanUpTeardown),
     cmocka_unit_test_setup_teardown(test_ufs_image_create_default_size, getFileNameSetup, cleanUpTeardown),
     cmocka_unit_test(test_ufs_image_create_cant_create_file),
+    cmocka_unit_test(test_ufs_image_sync_bad_arg),
     cmocka_unit_test_setup_teardown(test_ufs_image_sync, getFileNameSetup, cleanUpTeardown),
+    cmocka_unit_test(test_ufs_image_free_bad_arg),
 };
 
 int main(void) {
