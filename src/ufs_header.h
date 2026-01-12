@@ -16,17 +16,17 @@
 #include "ufs_image.h"
 
 struct ufsFileStruct {
-    uint8_t isOwend;
+    uint8_t isOwned;
     uint64_t strOffset;
 };
 
 struct ufsAreaStruct {
-    uint8_t isOwend;
+    uint8_t isOwned;
     uint64_t strOffset;
 };
 
 struct ufsNodeStruct {
-    uint8_t isOwend;
+    uint8_t isOwned;
     ufsIdType left, right;
     ufsIdType key[2];
     uint8_t numKeys;

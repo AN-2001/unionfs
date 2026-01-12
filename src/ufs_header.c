@@ -70,6 +70,8 @@ ufsImagePtr ufsHeaderValidate( ufsImagePtr img )
 
     size = *(uint64_t*)img;
 
+    /* First check that the header we got is valid...                         */
+    /* This has to be done first otherwise we'd invoke UB later.              */
     if ( size < minSize ) {
         ufsErrno = UFS_IMAGE_TOO_SMALL;
         ufsImageFree( img );
@@ -94,6 +96,8 @@ ufsImagePtr ufsHeaderValidate( ufsImagePtr img )
     sizes.numStrBytes = header -> sizes[ UFS_TYPES_STRING ];
 
     expectedSize = resolveSize( sizes );
+
+    /* We could check for exact match, but we don't mind if it's greater.     */
     if ( size < expectedSize ) {
         ufsErrno = UFS_IMAGE_BAD_SIZE;
         ufsImageFree( img );
