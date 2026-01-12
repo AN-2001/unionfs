@@ -91,6 +91,7 @@ bool ufsImageSync( ufsImagePtr image );
 * ufsImageFree                                                                 *
 *                                                                              *
 *  Invalidates the memory pointed to by image.                                 *
+*  Note: NULL can be passed, it'll be a NOOP.                                  *
 *                                                                              *
 * Parameters                                                                   *
 *                                                                              *

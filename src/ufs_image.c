@@ -138,8 +138,10 @@ bool ufsImageSync( ufsImagePtr image )
 
 void ufsImageFree( ufsImagePtr image )
 {
-    uint64_t size;
+    if ( !image )
+        return;
 
+    uint64_t size;
     size = *(uint64_t*)image;
 
     munmap( image, size );
