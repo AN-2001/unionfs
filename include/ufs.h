@@ -117,17 +117,28 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+#define UFS_STATUS_LIST \
+    UFS_X(UFS_NO_ERROR) \
+    UFS_X(UFS_OUT_OF_MEMORY) \
+    UFS_X(UFS_BAD_CALL) \
+    UFS_X(UFS_VIEW_CONTAINS_DUPLICATES) \
+    UFS_X(UFS_INVALID_AREA_IN_VIEW) \
+    UFS_X(UFS_ALREADY_EXISTS) \
+    UFS_X(UFS_DOES_NOT_EXIST) \
+    UFS_X(UFS_DIRECTORY_IS_NOT_EMPTY) \
+    UFS_X(UFS_CANNOT_RESOLVE_STORAGE) \
+    UFS_X(UFS_UNKNOWN_ERROR)
+
 enum {
-    UFS_NO_ERROR = 0,
-    UFS_OUT_OF_MEMORY,
-    UFS_BAD_CALL,
-    UFS_VIEW_CONTAINS_DUPLICATES,
-    UFS_INVALID_AREA_IN_VIEW,    
-    UFS_ALREADY_EXISTS,
-    UFS_DOES_NOT_EXIST,
-    UFS_DIRECTORY_IS_NOT_EMPTY,
-    UFS_CANNOT_RESOLVE_STORAGE,
-    UFS_UNKNOWN_ERROR
+#define UFS_X(name) name,
+    UFS_STATUS_LIST
+#undef UFS_X
+};
+
+const char *ufsStatusStrings[] = {
+#define UFS_X(name) #name,
+    UFS_STATUS_LIST
+#undef UFS_X
 };
 
 typedef uint8_t ufsStatusType;
@@ -427,6 +438,32 @@ ufsStatusType ufsRemoveArea( ufsType ufs,
 ufsStatusType ufsAddMapping( ufsType ufs,
                              ufsIdentifierType area,
                              ufsIdentifierType storage );
+
+/******************************************************************************\
+* ufsProbeMapping                                                              *
+*                                                                              *
+*  Probes ufs for mapping.                                                     *
+*                                                                              *
+*  Possible errors:                                                            *
+*   -UFS_BAD_CALL: The function received bad arguments.                        *
+*   -UFS_DOES_NOT_EXIST: The area or the storage do not exist in ufs.          *
+*   -UFS_MAPPING_DOES_NOT_EXIST: The mapping does not exist.                   *
+*   -UFS_UNKNOWN_ERROR: Any error not specified above.                         *
+*                                                                              *
+* Parameters                                                                   *
+*                                                                              *
+*  -ufs: The ufs instance, must not be NULL.                                   *
+*  -area: the area's unique identifier, must be greater than 0.                *
+*  -storage: the storage's unique identifier, must be greater than 0.          *
+*                                                                              *
+* Return                                                                       *
+*                                                                              *
+*  -ufsStatusType: The status of this call, errno is also set.                 *
+*                                                                              *
+\******************************************************************************/
+ufsStatusType ufsProbeMapping( ufsType ufs,
+                               ufsIdentifierType area,
+                               ufsIdentifierType storage );
 
 /******************************************************************************\
 * ufsResolveStorageInView                                                      *

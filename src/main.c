@@ -1,4 +1,4 @@
-#include "ufs_image.h"
+#include "ufs.h"
 
 int main()
 {
