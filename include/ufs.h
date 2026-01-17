@@ -61,11 +61,13 @@
 /*          Attempt to resolve s in Ak, if it contains it halt.               */
 /*          Otherwise continue to k + 1                                       */
 /*          Stop once n = k                                                   */
-/*       Views are to be terminated with a UFS_VIEW_TERMINATOR or they can    */
-/*       extend to UFS_VIEW_MAX_SIZE.                                         */
 /*       Views are not allowed to contain duplicate areas.                    */
 /*       BASE is allowed to exist anywhere in the view, although it'll be     */
 /*       most commonly at the end.                                            */
+/*       Views are to be terminated with a UFS_VIEW_TERMINATOR or they can    */
+/*       extend to UFS_VIEW_MAX_SIZE. Meaning when looking at a view an       */
+/*       observer must stop at the FIRST UFS_VIEW_TERMINATOR or until they    */
+/*       exhaust all of UFS_VIEW_MAX_SIZE.                                    */
 /*                                                                            */
 /* Directory iteration in the context of views: A directory can be iterated   */
 /* over given a view, the semantics of iteration don't take the view order    */
