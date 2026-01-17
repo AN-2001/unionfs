@@ -101,6 +101,12 @@
 /*                     If the last area happens to be BASE the changes are    */
 /*                     applied to the external filesystem.                    */
 /*                                                                            */
+/* About files and mappings: Files should always exist in a mapping, to       */
+/* satisfy this constraint we define two types of mappings:                   */
+/*   * An explicit mapping added view ufsAddMapping                           */
+/*   * An implicit mapping, if a file does not appear in an explicit mapping  */
+/*     then it is implicitly mapped to BASE.                                  */
+/*                                                                            */
 
 
 #define UFS_VIEW_MAX_SIZE (1024)
@@ -416,9 +422,9 @@ ufsStatusType ufsRemoveArea( ufsType ufs,
 *  -ufsStatusType: The status of this call, errno is also set.                 *
 *                                                                              *
 \******************************************************************************/
-ufsStatusType ufsAddAMapping( ufsType ufs,
-                              ufsIdentifierType area,
-                              ufsIdentifierType storage );
+ufsStatusType ufsAddMapping( ufsType ufs,
+                             ufsIdentifierType area,
+                             ufsIdentifierType storage );
 
 /******************************************************************************\
 * ufsResolveStorageInView                                                      *
@@ -469,6 +475,7 @@ ufsIdentifierType ufsResolveStorageInView( ufsType ufs,
 *  -view: The view to use.                                                     *
 *  -directory: The directory's unique identifier, must be greater than 0.      *
 *  -iterator: The iterator function to apply, must not be NULL.                *
+*  -userData: The user's data, can be NULL.                                    *
 *                                                                              *
 * Return                                                                       *
 *                                                                              *
@@ -478,7 +485,8 @@ ufsIdentifierType ufsResolveStorageInView( ufsType ufs,
 ufsStatusType ufsIterateDirInView( ufsType ufs,
                                    ufsViewType view,
                                    ufsIdentifierType directory,
-                                   ufsDirIter iterator );
+                                   ufsDirIter iterator,
+                                   void *userData );
 
 /******************************************************************************\
 * ufsCollapse                                                                  *
