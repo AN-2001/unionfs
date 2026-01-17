@@ -12,7 +12,7 @@
 #define UFS_H
 
 /*                                                                            */
-/* This is the spec for the ufs "union file system" storage backend.          */
+/* This is the spec for the ufs "union file system" storage back-end.         */
 /* The goal of this spec is to define the semantics of how ufs represents     */
 /* its internal data, in other words: this is the core of ufs.                */
 /* Definitions:                                                               */
@@ -37,7 +37,7 @@
 /*            * The same storage can appear with different areas.             */
 /*                                                                            */
 /* external filesystem: Referred to as external fs in other places in this doc*/
-/*                      Is the filesystem that ufs is mounted on top of.      */
+/*                      Is the file-system that ufs is mounted on top of.     */
 /*                      Formally it is the filesystem that existed before     */
 /*                      running ufsInit.                                      */
 /*                                                                            */
@@ -76,7 +76,7 @@
 /* file set F = files_in( A1, d ) union  ... union files_in( An, d )          */
 /*                                                                            */
 /* The directory iterator: The directory iterator is a function that the      */
-/* user supplies and implementor must call. For each iteration it contains    */
+/* user supplies and implementer must call. For each iteration it contains    */
 /*    * The current identifier of the storage.                                */
 /*    * The entry position in the iteration.                                  */
 /*    * The total number of entries that its iterating over.                  */
@@ -85,9 +85,9 @@
 /*                                                                            */
 /* IdentifierType: A numeric unique identifier to ufs type instance.          */
 /*                 identifiers are unique per ufs type and are not global     */
-/*                 across all ufs types.                                     */
+/*                 across all ufs types.                                      */
 /*                 The identifier must be strictly greater than 0.            */
-/*                 Note: it is up to the implementor to deduce the ufs type   */
+/*                 Note: it is up to the implementer to deduce the ufs type   */
 /*                       of something, IdentifierType doesn't define a tagging*/
 /*                       mechanism.                                           */
 /*                                                                            */
@@ -137,7 +137,7 @@ extern ufsStatusType ufsErrno;
 /******************************************************************************\
 * ufsInit                                                                      *
 *                                                                              *
-*  Initialize a ufs and return it.                                             *
+*  Initialise a ufs and return it.                                             *
 *  NOTE: this function DOES not mount ufs, it just returns an instance of it.  *
 *                                                                              *
 *  Possible errors:                                                            *
@@ -162,7 +162,7 @@ ufsType ufsInit();
 *                                                                              *
 * Parameters                                                                   *
 *                                                                              *
-*  -ufs: The ufs instance, can be NULL, in which case this is a noop.          *
+*  -ufs: The ufs instance, can be NULL, in which case this is a no-op.         *
 *                                                                              *
 * Return                                                                       *
 *                                                                              *
@@ -325,7 +325,7 @@ ufsIdentifierType ufsGetArea( ufsType ufs,
 *                                                                              *
 *  Removes a directory from ufs.                                               *
 *  A directory must be empty before being removed, an empty directory is a     *
-*  directory that does not contain any files globally across ufs.             *
+*  directory that does not contain any files globally across ufs.              *
 *                                                                              *
 *  Possible errors:                                                            *
 *   -UFS_BAD_CALL: The function received bad arguments.                        *
