@@ -16,7 +16,7 @@
 /* The goal of this spec is to define the semantics of how ufs represents     */
 /* its internal data, in other words: this is the core of ufs.                */
 /* Definitions:                                                               */
-/* File: An entity represented by a path on a file-system.                    */
+/* File: An entity represented by a name.                                     */
 /*                                                                            */
 /* Directory: a directory on a file system, semantically it should be thought */
 /*            or as a container of files in our context.                      */
@@ -29,9 +29,30 @@
 /* Area: A set of storage represented by a unique name.                       */
 /*       areas DO NOT own said storage, they only project it using a name.    */
 /*                                                                            */
-/* Mapping: A (area, storage) relation, defined as area projects storage.     */
+/* a ufs type: Is either a storage or area.                                   */
 /*                                                                            */
-/* View: a list of areas, in our context it can be UFS_MAX_VIEW_SIZE          */
+/* Mapping: A (area, storage) relation, defined as area projects storage.     */
+/*          Mappings are defined as a proper mathematical relation, meaning:  */
+/*            * They have set semantics.                                      */
+/*            * The same storage can appear with different areas.             */
+/*                                                                            */
+/* external filesystem: Referred to as external fs in other places in this doc*/
+/*                      Is the filesystem that ufs is mounted on top of.      */
+/*                      Formally it is the filesystem that existed before     */
+/*                      running ufsInit.                                      */
+/*                                                                            */
+/* BASE: a unique area that refers to the base external filesystem.           */
+/*       Most views will end with BASE as they're supposed to shadow it.      */
+/*       The keyword 'BASE' is a special keyword that cannot be added as an   */
+/*       area. It can be used when specifying a view to refer to the external */
+/*       filesystem. BASE is guaranteed to be valid after a ufsInit.          */
+/*       BASE cannot appear in a mapping, the filesystem semantics of search  */
+/*       are that of the external fs, meaning if ufs encounters BASE it should*/
+/*       dispatch queries to the external fs.                                 */
+/*       the external fs references by BASE should be immutable except when   */
+/*       calling ufsCollapse on a view that ends with BASE.                   */
+/*                                                                            */
+/* View: a list of areas, in our context it can be UFS_VIEW_MAX_SIZE          */
 /*       size max. Semantically this is a union of areas:                     */
 /*          Let V = ( A0, A1, ..., An )                                       */
 /*          Assume we're attempting to resolve some storage s in V            */
@@ -40,31 +61,63 @@
 /*          Attempt to resolve s in Ak, if it contains it halt.               */
 /*          Otherwise continue to k + 1                                       */
 /*          Stop once n = k                                                   */
+/*       Views are to be terminated with a UFS_VIEW_TERMINATOR or they can    */
+/*       extend to UFS_VIEW_MAX_SIZE.                                         */
+/*       Views are not allowed to contain duplicate areas.                    */
+/*       BASE is allowed to exist anywhere in the view, although it'll be     */
+/*       most commonly at the end.                                            */
 /*                                                                            */
-/* BASE: a unique area that refers to the base external filesystem.           */
-/*       Most views will end with BASE as they're supposed to shadow it.      */
+/* Directory iteration in the context of views: A directory can be iterated   */
+/* over given a view, the semantics of iteration don't take the view order    */
+/* into account. As for our uses (readdir) all the operation needs to do      */
+/* is compute a set union operation out of all files in the view.             */
+/* Formally: Given a view V = ( A1, A2, ..., An )                             */
+/* and a directory d, iterating over d in V equates to iteration over the     */
+/* file set F = files_in( A1, d ) union  ... union files_in( An, d )          */
 /*                                                                            */
-/* IdentifierType: A numeric unique identifier to a file, area, or a directory*/
-/*                 the identifier must be strictly greater than 0.            */
+/* The directory iterator: The directory iterator is a function that the      */
+/* user supplies and implementor must call. For each iteration it contains    */
+/*    * The current identifier of the storage.                                */
+/*    * The entry position in the iteration.                                  */
+/*    * The total number of entries that its iterating over.                  */
+/*    * User provided data.                                                   */
+/* An iterator can return an error status, it'd halt iteration and set errno. */
+/*                                                                            */
+/* IdentifierType: A numeric unique identifier to ufs type instance.          */
+/*                 identifiers are unique per ufs type and are not global     */
+/*                 across all ufs types.                                     */
+/*                 The identifier must be strictly greater than 0.            */
+/*                 Note: it is up to the implementor to deduce the ufs type   */
+/*                       of something, IdentifierType doesn't define a tagging*/
+/*                       mechanism.                                           */
 /*                                                                            */
 /* Note: BASE has the unique identifier 0.                                    */
-/*                                                                            */
 /*                                                                            */
 /* StatusType: A status that ufs stores in errno, shows the current status    */
 /*             of ufs, its set as a side effect of all ufs functions.         */
 /*                                                                            */
+/* collapse semantics: A ufs collapse on a view has should take all mappings  */
+/*                     in the view and apply them to the last area.           */
+/*                     If the last area happens to be BASE the changes are    */
+/*                     applied to the external filesystem.                    */
+/*                                                                            */
 
 
-
-#define UFS_MAX_VIEW_SIZE (1024)
+#define UFS_VIEW_MAX_SIZE (1024)
+#define UFS_VIEW_TERMINATOR (-1)
 
 #include <stdint.h>
 #include <sys/types.h>
 
 enum {
     UFS_NO_ERROR = 0,
+    UFS_OUT_OF_MEMORY,
     UFS_BAD_CALL,
+    UFS_VIEW_CONTAINS_DUPLICATES,
+    UFS_INVALID_AREA_IN_VIEW,    
     UFS_ALREADY_EXISTS,
+    UFS_DOES_NOT_EXIST,
+    UFS_DIRECTORY_IS_NOT_EMPTY,
     UFS_CANNOT_RESOLVE_STORAGE,
     UFS_UNKNOWN_ERROR
 };
@@ -73,10 +126,50 @@ typedef uint8_t ufsStatusType;
 typedef int64_t ufsIdentifierType;
 
 typedef void *ufsType;
-typedef ufsStatusType (*ufsDirIter)(const char *path);
-typedef ufsIdentifierType ufsViewType[ UFS_MAX_VIEW_SIZE ];
+typedef ufsStatusType (*ufsDirIter)( ufsIdentifierType storage,
+                                     uint64_t currEntry,
+                                     uint64_t numEntries,
+                                     void *userData);
+typedef ufsIdentifierType ufsViewType[ UFS_VIEW_MAX_SIZE ];
 
 extern ufsStatusType ufsErrno;
+
+/******************************************************************************\
+* ufsInit                                                                      *
+*                                                                              *
+*  Initialize a ufs and return it.                                             *
+*  NOTE: this function DOES not mount ufs, it just returns an instance of it.  *
+*                                                                              *
+*  Possible errors:                                                            *
+*   -UFS_OUT_OF_MEMORY: The system is out of memory and can't create ufs.      *
+*   -UFS_UNKNOWN_ERROR: Any error not specified above.                         *
+*                                                                              *
+* Return                                                                       *
+*                                                                              *
+*  -ufsType: a new ufs instance.                                               *
+*                                                                              *
+\******************************************************************************/
+ufsType ufsInit();
+
+/******************************************************************************\
+* ufsDestroy                                                                   *
+*                                                                              *
+*  Destroys a given ufs.                                                       *
+*                                                                              *
+*  Possible errors:                                                            *
+*   -UFS_UNKNOWN_ERROR: Should not return errors, so any error should be       *
+*                       unknown.                                               *
+*                                                                              *
+* Parameters                                                                   *
+*                                                                              *
+*  -ufs: The ufs instance, can be NULL, in which case this is a noop.          *
+*                                                                              *
+* Return                                                                       *
+*                                                                              *
+*  -void.                                                                      *
+*                                                                              *
+\******************************************************************************/
+void ufsDestroy( ufsType ufs );
 
 /******************************************************************************\
 * ufsAddDirectory                                                              *
@@ -184,12 +277,13 @@ ufsIdentifierType ufsGetDirectory( ufsType ufs,
 *                                                                              *
 *  Possible errors:                                                            *
 *   -UFS_BAD_CALL: The function received bad arguments.                        *
-*   -UFS_DOES_NOT_EXIST: The file does not exist in ufs.                       *
+*   -UFS_DOES_NOT_EXIST: The file or directory do not exist in ufs.            *
 *   -UFS_UNKNOWN_ERROR: Any error not specified above.                         *
 *                                                                              *
 * Parameters                                                                   *
 *                                                                              *
 *  -ufs: The ufs instance, must not be NULL.                                   *
+*  -directory: The directory that contains this file, must be greater than 0.  *
 *  -name: The name of the file, must not be NULL.                              *
 *                                                                              *
 * Return                                                                       *
@@ -199,7 +293,8 @@ ufsIdentifierType ufsGetDirectory( ufsType ufs,
 *                                                                              *
 \******************************************************************************/
 ufsIdentifierType ufsGetFile( ufsType ufs,
-                              const char *name );
+                              ufsIdentifierType directory,
+                              char *name );
 
 /******************************************************************************\
 * ufsGetArea                                                                   *
@@ -229,10 +324,14 @@ ufsIdentifierType ufsGetArea( ufsType ufs,
 * ufsRemoveDirectory                                                           *
 *                                                                              *
 *  Removes a directory from ufs.                                               *
+*  A directory must be empty before being removed, an empty directory is a     *
+*  directory that does not contain any files globally across ufs.             *
 *                                                                              *
 *  Possible errors:                                                            *
 *   -UFS_BAD_CALL: The function received bad arguments.                        *
 *   -UFS_DOES_NOT_EXIST: The directory does not exist in ufs.                  *
+*   -UFS_DIRECTORY_IS_NOT_EMPTY: The directory is not empty and can't be       *
+*                                removed.                                      *
 *   -UFS_UNKNOWN_ERROR: Any error not specified above.                         *
 *                                                                              *
 * Parameters                                                                   *
@@ -275,6 +374,7 @@ ufsStatusType ufsRemoveFile( ufsType ufs,
 * ufsRemoveArea                                                                *
 *                                                                              *
 *  Removes a area from ufs.                                                    *
+*  Removing an area results in all its mappings getting removed as well.       *
 *                                                                              *
 *  Possible errors:                                                            *
 *   -UFS_BAD_CALL: The function received bad arguments.                        *
@@ -302,6 +402,7 @@ ufsStatusType ufsRemoveArea( ufsType ufs,
 *  Possible errors:                                                            *
 *   -UFS_BAD_CALL: The function received bad arguments.                        *
 *   -UFS_DOES_NOT_EXIST: The area or the storage do not exist in ufs.          *
+*   -UFS_ALREADY_EXISTS: The mapping already exists in ufs.                    *
 *   -UFS_UNKNOWN_ERROR: Any error not specified above.                         *
 *                                                                              *
 * Parameters                                                                   *
@@ -328,6 +429,8 @@ ufsStatusType ufsAddAMapping( ufsType ufs,
 *   -UFS_BAD_CALL: The function received bad arguments.                        *
 *   -UFS_DOES_NOT_EXIST: The storage does not exist in ufs.                    *
 *   -UFS_CANNOT_RESOLVE_STORAGE: Could not resolve storage in the view.        *
+*   -UFS_VIEW_CONTAINS_DUPLICATES: The view contains duplicate areas.          *
+*   -UFS_INVALID_AREA_IN_VIEW: The view contains a non-existent area.          *
 *   -UFS_UNKNOWN_ERROR: Any error not specified above.                         *
 *                                                                              *
 * Parameters                                                                   *
@@ -356,6 +459,8 @@ ufsIdentifierType ufsResolveStorageInView( ufsType ufs,
 *  Possible errors:                                                            *
 *   -UFS_BAD_CALL: The function received bad arguments.                        *
 *   -UFS_DOES_NOT_EXIST: The directory does not exist in ufs.                  *
+*   -UFS_VIEW_CONTAINS_DUPLICATES: The view contains duplicate areas.          *
+*   -UFS_INVALID_AREA_IN_VIEW: The view contains a non-existent area.          *
 *   -UFS_UNKNOWN_ERROR: Any error not specified above.                         *
 *                                                                              *
 * Parameters                                                                   *
@@ -374,5 +479,30 @@ ufsStatusType ufsIterateDirInView( ufsType ufs,
                                    ufsViewType view,
                                    ufsIdentifierType directory,
                                    ufsDirIter iterator );
+
+/******************************************************************************\
+* ufsCollapse                                                                  *
+*                                                                              *
+*  Collapses all mappings in a ufs view into the last area in the view.        *
+*                                                                              *
+*  Possible errors:                                                            *
+*   -UFS_BAD_CALL: The function received bad arguments.                        *
+*   -UFS_DOES_NOT_EXIST: The directory does not exist in ufs.                  *
+*   -UFS_VIEW_CONTAINS_DUPLICATES: The view contains duplicate areas.          *
+*   -UFS_INVALID_AREA_IN_VIEW: The view contains a non-existent area.          *
+*   -UFS_UNKNOWN_ERROR: Any error not specified above.                         *
+*                                                                              *
+* Parameters                                                                   *
+*                                                                              *
+*  -ufs: The ufs instance, must not be NULL.                                   *
+*  -view: The view to use.                                                     *
+*                                                                              *
+* Return                                                                       *
+*                                                                              *
+*  -ufsStatusType: The status of this call, errno is also set.                 *
+*                                                                              *
+\******************************************************************************/
+ufsStatusType ufsCollapse( ufsType ufs,
+                           ufsViewType view );
 
 #endif /* UFS_H */
